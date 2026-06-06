@@ -1,0 +1,36 @@
+[package]
+name = "spa-recovery-cli"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "CLI for SPA recovery prototype — Tier 0 lifecycle integration."
+publish = false
+
+[[bin]]
+name = "recovery"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+frost-tier0 = { path = "../../crates/frost-tier0" }
+slf-receipts = { path = "../../crates/slf-receipts" }
+recovery-orchestrator = { path = "../../crates/recovery-orchestrator" }
+clap = { version = "4", features = ["derive", "env"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+aes-gcm = "=0.10.3"
+argon2 = "0.5"
+rand_core = { version = "0.6", features = ["getrandom"] }
+hex = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "5"
+thiserror = "1"
+
+[dev-dependencies]
+assert_cmd = "2"
+tempfile = "3"
+predicates = "3"

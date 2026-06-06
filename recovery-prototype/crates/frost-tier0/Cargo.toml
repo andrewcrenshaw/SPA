@@ -1,0 +1,21 @@
+[package]
+name = "frost-tier0"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "Tier-0 FROST-Ed25519 threshold signing primitives for SPA recovery."
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+frost-ed25519 = "=2.2.0"
+zeroize = { version = "1.8", features = ["derive"] }
+thiserror = "1"
+rand_core = "0.6"
+
+[dev-dependencies]
+rand_core = { version = "0.6", features = ["getrandom"] }

@@ -1,0 +1,22 @@
+[workspace]
+resolver = "2"
+members = [
+    "recovery-prototype",
+    "recovery-prototype/crates/frost-tier0",
+    "recovery-prototype/crates/slf-receipts",
+    "recovery-prototype/crates/recovery-orchestrator",
+    "recovery-prototype/apps/cli",
+]
+
+[workspace.package]
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/andrewcrenshaw/SPA"
+authors = ["Andrew Crenshaw"]
+rust-version = "1.95"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }

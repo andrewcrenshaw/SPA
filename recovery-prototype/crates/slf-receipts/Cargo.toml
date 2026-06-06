@@ -1,0 +1,19 @@
+[package]
+name = "slf-receipts"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "SLF receipt encoding, signing, and verification for SPA recovery."
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+blake3 = "=1.8.5"
+thiserror = "1"
+hex = "0.4"

@@ -1,0 +1,17 @@
+[package]
+name = "recovery-orchestrator"
+version = "0.0.1"
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "Lifecycle state machine for SPA recovery sessions."
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+thiserror = "1"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }

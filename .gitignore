@@ -1,0 +1,11 @@
+target/
+**/*.rs.bk
+.DS_Store
+*.swp
+*.swo
+.agent-data/
+
+# Library Cargo.lock is conventionally not committed; the workspace
+# here ships binaries (recovery-cli), so we DO commit the top-level
+# lock for reproducible binary builds.
+!/Cargo.lock
