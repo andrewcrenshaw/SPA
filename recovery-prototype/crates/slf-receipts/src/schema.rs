@@ -69,14 +69,14 @@ pub enum ReceiptKind {
 /// Receipts form a hash-linked chain: each receipt (after the first)
 /// carries the BLAKE3 content hash of its predecessor in `prev_hash`,
 /// making retroactive tampering detectable by [`crate::chain::verify_chain`].
-/// This hash-linking gives the chain **tamper-evidence (integrity)**, not
-/// **authenticity** — see the `signature` field note below.
+/// Hash-linking alone gives the chain **tamper-evidence (integrity)**, not
+/// **authenticity**.
 ///
-/// In Phase 1 the `signature` field is unused: receipts are emitted with an
-/// empty string and no cryptographic signature is bound into the receipt.
-/// Binding the FROST-Ed25519 signature over [`Receipt::content_hash`] into
-/// the receipt (so the chain proves authenticity, not just integrity) is a
-/// Phase 2 item.
+/// Authenticity comes from the `signature` field: a FROST-Ed25519 signature
+/// bound over [`Receipt::content_hash`], hex-encoded. [`crate::chain::verify_signed_chain`]
+/// checks integrity *and* authenticity; [`crate::chain::verify_chain`] checks
+/// integrity only and is retained for callers that do not yet carry a verifying
+/// key. See the `signature` field note below.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Receipt {
     pub kind: ReceiptKind,
@@ -89,12 +89,14 @@ pub struct Receipt {
     /// Unix epoch seconds. Callers are responsible for monotonicity within a
     /// chain; the verifier does not check timestamp ordering.
     pub timestamp: u64,
-    /// Unused in Phase 1: receipts are emitted with this field empty and no
-    /// cryptographic signature is bound into the receipt. The chain provides
-    /// tamper-evidence by hash-linking (`prev_hash`), which proves integrity,
-    /// **not** authenticity. Binding a FROST-Ed25519 signature over
-    /// [`Receipt::content_hash`] into this field is a Phase 2 item; until then
-    /// the field is retained for forward wire-compatibility only.
+    /// Hex-encoded FROST-Ed25519 signature bound over [`Receipt::content_hash`]
+    /// (ADR-SLF-SPA-PHASE2-KEY-CUSTODY, K3). This is what makes the chain
+    /// **authentic** rather than merely tamper-evident: a forger who lacks the
+    /// group key cannot produce a receipt that [`crate::chain::verify_signed_chain`]
+    /// accepts. The field is excluded from the content-hash pre-image so the
+    /// hash can be computed before signing and verified without the private key.
+    /// An empty string denotes an unsigned receipt, which `verify_signed_chain`
+    /// rejects; [`crate::chain::verify_chain`] (integrity-only) ignores it.
     pub signature: String,
     /// Arbitrary structured payload specific to [`Receipt::kind`].
     pub payload: Value,
@@ -137,6 +139,18 @@ impl Receipt {
     /// Lowercase hex encoding of [`Receipt::content_hash`].
     pub fn content_hash_hex(&self) -> String {
         hex::encode(self.content_hash())
+    }
+
+    /// Decode the [`signature`](Receipt::signature) field from hex into raw
+    /// bytes for cryptographic verification.
+    ///
+    /// Returns the decoded bytes, or [`hex::FromHexError`] if the field is not
+    /// valid lowercase hex. An empty `signature` decodes to an empty `Vec`;
+    /// callers that require authenticity (e.g.
+    /// [`crate::chain::verify_signed_chain`]) must reject the empty case
+    /// separately before treating the result as a signature.
+    pub fn signature_bytes(&self) -> Result<Vec<u8>, hex::FromHexError> {
+        hex::decode(&self.signature)
     }
 
     fn canonical_bytes(&self) -> Vec<u8> {
