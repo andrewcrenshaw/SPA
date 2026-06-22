@@ -21,7 +21,9 @@ fn e2e_onboard() {
         .assert()
         .success()
         .stdout(contains("onboarded: alice"))
-        .stdout(contains("shares: device.share cloud.share recovery_code.share"))
+        .stdout(contains(
+            "shares: device.share cloud.share recovery_code.share",
+        ))
         .stdout(contains("state: Onboarded"));
 
     // Three share files exist
@@ -44,7 +46,10 @@ fn e2e_onboard() {
         "recovery_initiation",
         "anchor must be recovery_initiation"
     );
-    assert!(arr[0]["prev_hash"].is_null(), "anchor must have no prev_hash");
+    assert!(
+        arr[0]["prev_hash"].is_null(),
+        "anchor must have no prev_hash"
+    );
 }
 
 // ── e2e_sign ──────────────────────────────────────────────────────────────────

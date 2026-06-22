@@ -43,7 +43,9 @@ impl Share {
     /// Stable identifier for this share within the group.
     pub fn participant_id(&self) -> Result<ParticipantId, Error> {
         let kp = self.to_key_package()?;
-        Ok(ParticipantId { inner: *kp.identifier() })
+        Ok(ParticipantId {
+            inner: *kp.identifier(),
+        })
     }
 
     /// Serialize this share to bytes for encrypted-at-rest storage.

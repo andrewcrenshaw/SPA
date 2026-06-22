@@ -67,7 +67,10 @@ fn tampered_chain_fails_verification() {
     chain[5].prev_hash = Some("deadbeef".repeat(8));
     let err = verify_chain(&chain).unwrap_err();
     assert!(
-        matches!(err, slf_receipts::ChainError::PrevHashMismatch { index: 5, .. }),
+        matches!(
+            err,
+            slf_receipts::ChainError::PrevHashMismatch { index: 5, .. }
+        ),
         "expected PrevHashMismatch at index 5, got: {err:?}"
     );
 }

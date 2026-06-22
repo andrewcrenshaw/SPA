@@ -10,9 +10,9 @@ use slf_receipts::{verify_chain, ReceiptKind};
 use thiserror::Error;
 
 use crate::persistence::{
-    append_receipt, delete_share, load_group_pubkey, load_receipts, load_session,
-    load_share, next_receipt, now_secs, save_group_pubkey, save_session,
-    save_share, test_clock, PersistError, SessionRecord, ShareKind, UserDir,
+    append_receipt, delete_share, load_group_pubkey, load_receipts, load_session, load_share,
+    next_receipt, now_secs, save_group_pubkey, save_session, save_share, test_clock, PersistError,
+    SessionRecord, ShareKind, UserDir,
 };
 
 #[derive(Debug, Error)]

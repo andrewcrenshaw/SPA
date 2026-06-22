@@ -119,8 +119,8 @@ fn encrypt_blob(passphrase: &str, plaintext: &[u8]) -> Result<EncryptedBlob, Per
     OsRng.fill_bytes(&mut nonce_bytes);
 
     let key = derive_key(passphrase, &salt)?;
-    let cipher = Aes256Gcm::new_from_slice(&key)
-        .map_err(|e| PersistError::Crypto(e.to_string()))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(&key).map_err(|e| PersistError::Crypto(e.to_string()))?;
     let nonce = aes_gcm::Nonce::from_slice(&nonce_bytes);
     let ct = cipher
         .encrypt(nonce, plaintext)
@@ -139,8 +139,8 @@ fn decrypt_blob(passphrase: &str, blob: &EncryptedBlob) -> Result<Vec<u8>, Persi
     let ct = hex::decode(&blob.ct_hex).map_err(|_| PersistError::Malformed)?;
 
     let key = derive_key(passphrase, &salt)?;
-    let cipher = Aes256Gcm::new_from_slice(&key)
-        .map_err(|e| PersistError::Crypto(e.to_string()))?;
+    let cipher =
+        Aes256Gcm::new_from_slice(&key).map_err(|e| PersistError::Crypto(e.to_string()))?;
     let nonce = aes_gcm::Nonce::from_slice(&nonce_bytes);
     cipher
         .decrypt(nonce, ct.as_slice())
@@ -248,7 +248,9 @@ pub fn next_receipt(
 ) -> Result<Receipt, PersistError> {
     let chain = load_receipts(dir)?;
     let prev_hash = chain.last().map(|r| r.content_hash_hex());
-    Ok(Receipt::emit(kind, subject, prev_hash, timestamp, signature, payload))
+    Ok(Receipt::emit(
+        kind, subject, prev_hash, timestamp, signature, payload,
+    ))
 }
 
 pub fn now_secs(test_epoch: Option<i64>) -> u64 {

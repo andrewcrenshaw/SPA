@@ -70,7 +70,9 @@ fn all_three_shares_also_produce_valid_signature() {
     let s2 = sign_partial(&shares[2], &n2, &cs, message).expect("sign 2");
 
     let sig = aggregate(&group_pk, &cs, &[s0, s1, s2], message).expect("aggregate");
-    group_pk.verify(message, &sig).expect("3-of-3 signature must verify");
+    group_pk
+        .verify(message, &sig)
+        .expect("3-of-3 signature must verify");
 }
 
 #[test]

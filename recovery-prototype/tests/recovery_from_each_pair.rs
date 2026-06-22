@@ -6,12 +6,7 @@
 use frost_tier0::{aggregate, commit, dealer_keygen, sign_partial, GroupPublicKey, Share};
 use rand_core::OsRng;
 
-fn sign_with_pair(
-    shares: &[Share],
-    gpk: &GroupPublicKey,
-    indices: [usize; 2],
-    msg: &[u8],
-) {
+fn sign_with_pair(shares: &[Share], gpk: &GroupPublicKey, indices: [usize; 2], msg: &[u8]) {
     let (n0, c0) = commit(&shares[indices[0]], &mut OsRng).unwrap();
     let (n1, c1) = commit(&shares[indices[1]], &mut OsRng).unwrap();
     let cs = vec![c0.clone(), c1.clone()];

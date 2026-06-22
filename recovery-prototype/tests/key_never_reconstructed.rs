@@ -34,8 +34,7 @@ fn crates_contain_no_reconstruction_symbols() {
         .sum();
 
     assert_eq!(
-        total,
-        0,
+        total, 0,
         "reconstruction symbols found in crates/:\n{stdout}"
     );
 }

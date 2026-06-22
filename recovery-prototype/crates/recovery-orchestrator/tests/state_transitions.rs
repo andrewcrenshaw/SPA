@@ -28,7 +28,10 @@ fn onboard_transitions_from_uninitialized() {
 fn onboard_rejected_when_already_onboarded() {
     let (_, mut sm) = clock_and_machine();
     sm.onboard().unwrap();
-    assert!(matches!(sm.onboard(), Err(TransitionError::InvalidState(_))));
+    assert!(matches!(
+        sm.onboard(),
+        Err(TransitionError::InvalidState(_))
+    ));
 }
 
 #[test]

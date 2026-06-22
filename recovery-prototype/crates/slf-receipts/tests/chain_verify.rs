@@ -68,10 +68,26 @@ fn deterministic_serialize() {
 #[test]
 fn chain_valid() {
     let mut chain = vec![make_anchor()];
-    chain.push(extend_chain(&chain, ReceiptKind::RecoveryFactorAssertion, 1_000_000_001));
-    chain.push(extend_chain(&chain, ReceiptKind::RecoveryCooldownStart, 1_000_000_002));
-    chain.push(extend_chain(&chain, ReceiptKind::RecoveryCooldownCancel, 1_000_000_003));
-    chain.push(extend_chain(&chain, ReceiptKind::RecoveryProbationClear, 1_000_000_004));
+    chain.push(extend_chain(
+        &chain,
+        ReceiptKind::RecoveryFactorAssertion,
+        1_000_000_001,
+    ));
+    chain.push(extend_chain(
+        &chain,
+        ReceiptKind::RecoveryCooldownStart,
+        1_000_000_002,
+    ));
+    chain.push(extend_chain(
+        &chain,
+        ReceiptKind::RecoveryCooldownCancel,
+        1_000_000_003,
+    ));
+    chain.push(extend_chain(
+        &chain,
+        ReceiptKind::RecoveryProbationClear,
+        1_000_000_004,
+    ));
 
     assert_eq!(chain.len(), 5);
     verify_chain(&chain).expect("valid five-link chain must pass");
@@ -82,8 +98,16 @@ fn chain_valid() {
 #[test]
 fn chain_tampered() {
     let mut chain = vec![make_anchor()];
-    chain.push(extend_chain(&chain, ReceiptKind::RecoveryFactorAssertion, 1_000_000_001));
-    chain.push(extend_chain(&chain, ReceiptKind::WalletUnitRebind, 1_000_000_002));
+    chain.push(extend_chain(
+        &chain,
+        ReceiptKind::RecoveryFactorAssertion,
+        1_000_000_001,
+    ));
+    chain.push(extend_chain(
+        &chain,
+        ReceiptKind::WalletUnitRebind,
+        1_000_000_002,
+    ));
 
     // Tamper with the middle link's payload — its hash changes, making link 2's
     // prev_hash stale.
@@ -101,7 +125,10 @@ fn chain_tampered() {
 #[test]
 fn chain_empty_rejected() {
     let err = verify_chain(&[]).expect_err("empty chain must be rejected");
-    assert!(matches!(err, ChainError::Empty), "expected Empty, got {err:?}");
+    assert!(
+        matches!(err, ChainError::Empty),
+        "expected Empty, got {err:?}"
+    );
 }
 
 #[test]
@@ -120,8 +147,7 @@ fn anchor_with_prev_hash_rejected() {
         "",
         json!({}),
     );
-    let err =
-        verify_chain(&[bogus_anchor]).expect_err("anchor with prev_hash must be rejected");
+    let err = verify_chain(&[bogus_anchor]).expect_err("anchor with prev_hash must be rejected");
     assert!(
         matches!(err, ChainError::AnchorHasPrevHash),
         "expected AnchorHasPrevHash, got {err:?}"

@@ -53,7 +53,11 @@ fn lifecycle_is_stable_across_one_hundred_seeds() {
         // ── State-machine path ────────────────────────────────────────────────
 
         let mut m = StateMachine::new(SystemClock);
-        assert_eq!(*m.state(), State::Uninitialized, "seed {seed}: initial state");
+        assert_eq!(
+            *m.state(),
+            State::Uninitialized,
+            "seed {seed}: initial state"
+        );
 
         m.onboard()
             .unwrap_or_else(|e| panic!("seed {seed}: onboard: {e}"));

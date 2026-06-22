@@ -23,5 +23,7 @@ fn two_of_three_signature_verifies_against_group_public_key() {
 
     let sig = aggregate(&group_pk, &commitments, &[sig_a, sig_b], message).expect("aggregate");
 
-    group_pk.verify(message, &sig).expect("signature must verify");
+    group_pk
+        .verify(message, &sig)
+        .expect("signature must verify");
 }

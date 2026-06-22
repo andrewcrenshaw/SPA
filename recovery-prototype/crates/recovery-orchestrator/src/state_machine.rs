@@ -18,9 +18,13 @@ pub enum State {
     Onboarded,
     RecoveryInitiated,
     /// 48-hour cooldown window. Any configured factor may call `cancel()`.
-    Cooldown { ends_at: DateTime<Utc> },
+    Cooldown {
+        ends_at: DateTime<Utc>,
+    },
     /// 24-hour probation after cooldown expires. Presentation allowed; grants blocked.
-    Probation { ends_at: DateTime<Utc> },
+    Probation {
+        ends_at: DateTime<Utc>,
+    },
     Live,
 }
 
