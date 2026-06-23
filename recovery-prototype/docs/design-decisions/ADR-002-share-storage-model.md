@@ -196,3 +196,13 @@ Signal-Foundation libsignal-protocol pattern: a Secure-Enclave-resident P-256 ke
 attests a software Ed25519 key, and the recovery FROST share lives behind the
 attestation gate. This is the same shape as iMessage's Ed25519-identity-key
 storage and is documented in [ADR-001 §"Consequences → Negative"](ADR-001-frost-ciphersuite.md).
+
+**The Phase 2 design pass that fills in this table is [ADR-004](ADR-004-phase2-key-custody.md)**
+(KC-2, PCC-3172). ADR-004 maps the bridge onto the `ShareSource` seam as an
+ECIES-wrap-to-Enclave construction (`SecureEnclaveSource` returns an Enclave-unwrapped root
+secret, leaving the Argon2id → AES-GCM derivation and every caller untouched), resolves the
+`unsafe_code = "forbid"` / Security.framework-FFI tension (`security-framework` crate first, a
+quarantined raw-FFI shim crate as fallback), and records that the `cloud` / iCloud-Keychain
+synchronizable item needs an Apple Developer Team entitlement a CLI cannot obtain, so its
+runnable PoC is deferred while the `device` / Secure-Enclave share is provable on Apple-silicon
+hardware.
