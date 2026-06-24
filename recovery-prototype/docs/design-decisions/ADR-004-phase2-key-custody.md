@@ -159,13 +159,13 @@ Per the PCC-3172 note, the work decomposes after this spike. Recommended childre
 
 | Child | Scope | Gating |
 |-------|-------|--------|
-| KC-2.1 (PCC-3188, filed) | `security-framework` SE/ECIES probe; settles D1 (crate vs shim) | none — pure spike |
-| KC-2.2 | `SecureEnclaveSource` impl + the `device.share` hardware PoC (AC#2, AC#4) | gated on KC-2.1 outcome + Checkpoint 2 sign-off |
-| KC-2.3 | `RecoveryCodeSource` (28-char user code) | independent; no FFI |
-| KC-2.4 | `KeychainSource` (`cloud.share`, synchronizable) + `.app`/entitlements harness | gated on a provisioned Apple Developer Team (D2) |
+| KC-2.1 (PCC-3188, **done**) | `security-framework` SE/ECIES probe; settled D1 on the crate | none — pure spike |
+| KC-2.2 (PCC-3190, filed) | `SecureEnclaveSource` impl + the `device.share` hardware PoC (AC#2, AC#4) | KC-2.1 done; Checkpoint 2 approved; see KC-2.2 design section above |
+| KC-2.3 | `RecoveryCodeSource` (28-char user code) | independent; no FFI; unfiled |
+| KC-2.4 | `KeychainSource` (`cloud.share`, synchronizable) + `.app`/entitlements harness | gated on a provisioned Apple Developer Team (D2); unfiled |
 
-KC-2.2–2.4 are deliberately left unfiled until KC-2.1 (PCC-3188) returns the crate-vs-shim
-verdict: their `file_scope` and ACs depend on whether the `spa-se-bridge` shim crate exists.
+KC-2.3 (no FFI, hardware-independent) can be filed and run in parallel with KC-2.2. KC-2.4 stays
+unfiled until an Apple Developer Team is available for the synchronizable-Keychain entitlement.
 
 `SecureEnclaveSource` is macOS/iOS-gated (`#[cfg(target_os = ...)]`); non-Apple targets keep a
 compile-time fallback so the workspace still builds and `cargo test --workspace` stays green on
