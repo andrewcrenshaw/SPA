@@ -59,9 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //    clear: only this Enclave's private key can unwrap it.
     let mut secret = [0u8; 32];
     OsRng.fill_bytes(&mut secret);
-    let public_key = se_key
-        .public_key()
-        .ok_or("SE key exposed no public half")?;
+    let public_key = se_key.public_key().ok_or("SE key exposed no public half")?;
     let ciphertext = public_key.encrypt_data(ECIES, &secret)?;
     eprintln!(
         "  [2/3] ECIES-encrypted 32-byte secret to SE public key ({} bytes ciphertext)",
@@ -74,7 +72,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //    ↔ `SecKeyCreateEncryptedData`). Recording that crate-vs-Apple naming gap is part of
     //    this probe's D1 finding.
     let recovered = se_key.decrypt_data(ECIES, &ciphertext)?;
-    eprintln!("  [3/3] decrypted via the Enclave ({} bytes)", recovered.len());
+    eprintln!(
+        "  [3/3] decrypted via the Enclave ({} bytes)",
+        recovered.len()
+    );
 
     if recovered.as_slice() != secret.as_slice() {
         return Err(format!(
@@ -85,7 +86,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     println!("PROBE PASSED: 32-byte secret round-tripped through an SE-resident P-256 key.");
-    println!("VERDICT (D1): security-framework crate is SUFFICIENT — no spa-se-bridge shim needed.");
+    println!(
+        "VERDICT (D1): security-framework crate is SUFFICIENT — no spa-se-bridge shim needed."
+    );
     Ok(())
 }
 
