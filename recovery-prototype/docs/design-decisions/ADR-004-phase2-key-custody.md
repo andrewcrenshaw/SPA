@@ -184,6 +184,39 @@ CI that is not Apple-silicon.
    `...StandardX963...`. Pin one and record it like the other load-bearing crypto pins
    (ADR-001 §Neutral).
 
+### KC-2.1 verdict (PCC-3188) — Checkpoint 1 settled on the crate
+
+Probe: `apps/cli/examples/se_probe.rs`, `security-framework = "3"` (resolved 3.7.0,
+`security-framework-sys 2.17.0`). It generated a non-exportable SE P-256 key, ECIES-encrypted a
+random 32-byte secret to its public half, and decrypted it back through the Enclave, using only
+safe `security-framework` APIs (the example contains zero `unsafe`; the cli crate keeps
+`[lints] workspace = true` → `forbid(unsafe_code)`). It ran on Apple-silicon under an ad-hoc
+signature and round-tripped the 32 bytes (113-byte ciphertext: 65-byte ephemeral P-256 point +
+16-byte GCM tag + 32-byte payload), exit 0.
+
+1. **Resolved: YES. `security-framework` is sufficient; the `spa-se-bridge` raw-FFI shim is
+   NOT needed.** SE key generation is `GenerateKeyOptions` + `SecKey::new` with
+   `Token::SecureEnclave` and `KeyType::ec()`; access control is
+   `SecAccessControl::create_with_flags(kSecAccessControlPrivateKeyUsage)`; ECIES is
+   `SecKey::encrypt_data` / `SecKey::decrypt_data`. Two naming gaps to carry into KC-2.2 (both
+   safe, neither needs `unsafe`): the wrappers are `encrypt_data` / `decrypt_data`, not Apple's
+   `SecKeyCreateEncryptedData` / `SecKeyCreateDecryptedData`; and `kSecAccessControlPrivateKeyUsage`
+   is not re-exported by the safe crate (value `1 << 30`, restated locally). **D1 is settled on
+   the crate. KC-2.2 builds on `security-framework`; the shim fallback is dropped.**
+2. **Resolved for key creation: ad-hoc `codesign -s -` is enough.** The probe key is
+   *non-permanent* (no keychain location → `kSecAttrIsPermanent = false`), so it needs no
+   keychain-access-group and produced no prompt. Open sub-question for KC-2.2: the
+   `SecureEnclaveSource` flow needs the SE key to *persist across process restarts*, which means
+   a permanent key in the data-protection keychain; whether ad-hoc signing still suffices for a
+   *permanent* SE key or whether a `keychain-access-groups` entitlement (and thus an
+   `.app` / provisioning) is required is the next thing KC-2.2 must measure. AC#4's off-device
+   test stays a manual two-Mac run.
+3. **Resolved: pin `ECIESEncryptionCofactorX963SHA256AESGCM`** (the cofactor X9.63 / SHA-256 /
+   AES-GCM variant). Confirmed present in `security-framework-sys 2.17.0` and exercised by the
+   probe. Record alongside the ADR-001 §Neutral crypto pins.
+
+The probe is throwaway: nothing in `src/` depends on it and `persistence.rs` is untouched.
+
 ---
 
 ## Consequences

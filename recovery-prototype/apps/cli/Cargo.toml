@@ -30,6 +30,14 @@ chrono = { version = "0.4", features = ["serde"] }
 dirs = "5"
 thiserror = "1"
 
+# KC-2.1 (PCC-3188) Secure-Enclave + ECIES probe. Apple-only; safe wrappers around
+# Security.framework. The `forbid(unsafe_code)` lint is per-crate and does not apply
+# transitively, so the C-ABI `unsafe` lives inside this dependency, not in any SPA crate
+# (ADR-004 §D1). Used only by examples/se_probe.rs — no production code depends on it.
+[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
+security-framework = "3"
+core-foundation = "0.10"
+
 [dev-dependencies]
 assert_cmd = "2"
 tempfile = "3"
