@@ -161,11 +161,12 @@ Per the PCC-3172 note, the work decomposes after this spike. Recommended childre
 |-------|-------|--------|
 | KC-2.1 (PCC-3188, **done**) | `security-framework` SE/ECIES probe; settled D1 on the crate | none — pure spike |
 | KC-2.2 (PCC-3190, filed) | `SecureEnclaveSource` impl + the `device.share` hardware PoC (AC#2, AC#4) | KC-2.1 done; Checkpoint 2 approved; see KC-2.2 design section above |
-| KC-2.3 | `RecoveryCodeSource` (28-char user code) | independent; no FFI; unfiled |
+| KC-2.3 (PCC-3197, filed) | `RecoveryCodeSource` (28-char user code) | no FFI; parallel with KC-2.2 via worktree isolation; see KC-2.3 design section |
 | KC-2.4 | `KeychainSource` (`cloud.share`, synchronizable) + `.app`/entitlements harness | gated on a provisioned Apple Developer Team (D2); unfiled |
 
-KC-2.3 (no FFI, hardware-independent) can be filed and run in parallel with KC-2.2. KC-2.4 stays
-unfiled until an Apple Developer Team is available for the synchronizable-Keychain entitlement.
+KC-2.2 (PCC-3190) and KC-2.3 (PCC-3197) both edit the `persistence.rs` save/load seam: run them in
+separate git worktrees and rebase the second onto the first. KC-2.4 stays unfiled until an Apple
+Developer Team is available for the synchronizable-Keychain entitlement.
 
 `SecureEnclaveSource` is macOS/iOS-gated (`#[cfg(target_os = ...)]`); non-Apple targets keep a
 compile-time fallback so the workspace still builds and `cargo test --workspace` stays green on
@@ -312,6 +313,75 @@ core-foundation = "0.10"
    constraint and scope the PoC to a signed bundle.
 2. **Pre-submit.** Confirm `cargo test --workspace` is green on a non-Apple target (cfg-gating
    holds) and that the off-device two-Mac result is recorded before close.
+
+---
+
+## KC-2.3 implementation design (`RecoveryCodeSource`)
+
+The recovery_code share is the **portable** one (ADR-002): intentionally NOT device-bound, so a
+user who has lost both device and cloud can recover with a code they wrote down. No FFI, no
+hardware, no Apple gating. This is the opposite property from `device` / `cloud`: a
+`recovery_code.share` copied to another machine **must** unwrap given the correct code.
+
+### Design
+
+```rust
+// apps/cli/src/persistence.rs — portable, cross-platform.
+pub struct RecoveryCodeSource { code: Secret }   // the normalized 28-char user code
+
+impl RecoveryCodeSource {
+    pub fn new(code: &str) -> Self { Self { code: Secret::new(normalize(code).into_bytes()) } }
+}
+
+impl ShareSource for RecoveryCodeSource {
+    fn wrapping_secret(&self, kind: &ShareKind) -> Result<Secret, PersistError> {
+        let mut material = self.code.as_bytes().to_vec();          // user code …
+        material.extend_from_slice(kind.domain_label().as_bytes()); // … || domain_label
+        Ok(Secret::new(material))                                   // Argon2id-to-AES path unchanged
+    }
+}
+
+// 28 chars from a 32-symbol Crockford-base32 alphabet (I/L/O/U excluded) = 140 bits, read
+// unbiased as 5-bit groups from OsRng. Displayed grouped (XXXX-XXXX-…); normalize() upper-cases
+// and strips separators on the way back in.
+pub fn generate_recovery_code() -> String { /* … */ }
+```
+
+### Seam coordination with KC-2.2 (important)
+
+`RecoveryCodeSource` cannot be picked by the device/cloud source factory, because its secret is
+user-supplied, not derived from a stored key. So the recovery_code path takes an **explicit**
+source: `save_share`/`load_share` are refactored to delegate to `save_share_with(dir, kind, share,
+&dyn ShareSource)` / `load_share_with(...)`, and the CLI passes a constructed `RecoveryCodeSource`
+for the recovery_code kind. **KC-2.2 (PCC-3190) and KC-2.3 both edit this save/load seam in
+`persistence.rs`.** They are logically independent (portability vs SE device-binding) and carry no
+hard dependency, but to avoid a file_scope/merge collision they must run in **separate git
+worktrees**, and whichever lands second rebases the seam onto the first. This is KC-2.3's first
+design checkpoint.
+
+### CLI wiring (`onboard`)
+
+`onboard` generates a code, **prints it once** (the user must record it), and wraps
+`recovery_code.share` with `RecoveryCodeSource(code)`. Generation needs no input, so the e2e
+suite stays non-interactive (ADR-002 §"Why a stub passphrase"). The full "re-enter the code to
+complete recovery" prompt belongs to a later recovery-completion ticket; `recover()` does not load
+the recovery_code share today and KC-2.3 does not add that flow.
+
+### TDD plan
+
+- `recovery_code.share` round-trips through `save_share_with` / `load_share_with` with the
+  correct code (machine-verifiable, cross-platform).
+- **Portability assertion** (the inverse of the device-binding test): the same blob unwraps with
+  the same code regardless of any device key on the host.
+- A **wrong code fails** to decrypt (GCM auth failure).
+- `generate_recovery_code()` returns 28 alphabet chars with the expected entropy/format.
+- `onboard` integration test asserts a recovery-code line is printed.
+
+### Rollback
+
+Additive: `RecoveryCodeSource` and the `_with` primitives are new; reverting the `onboard`
+recovery_code arm back to the default device-bound `save_share` restores Phase-1.5 behavior.
+`recovery_code.share` blobs are source-agnostic, so no data migration.
 
 ---
 
