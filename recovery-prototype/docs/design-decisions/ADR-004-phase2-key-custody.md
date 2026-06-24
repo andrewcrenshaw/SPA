@@ -219,6 +219,102 @@ The probe is throwaway: nothing in `src/` depends on it and `persistence.rs` is 
 
 ---
 
+## KC-2.2 implementation design (`SecureEnclaveSource`)
+
+Tracks the next child after the KC-2.1 verdict. Carries PCC-3172's AC#2 (a `SecureEnclaveSource`
+implements `ShareSource`) and AC#4 (the off-device hardware proof). Built on `security-framework`
+"3" per the settled D1; no shim.
+
+### The one thing the probe did not prove: key persistence
+
+The probe key was **non-permanent** (no keychain location → regenerated per process, ad-hoc
+signing sufficed). `SecureEnclaveSource` cannot work that way: the CLI runs `onboard`, then
+`sign`, then `recover` as **separate processes**, and each must unwrap the same `.spa-se-wrapped-key`
+blob. That requires the **same SE private key across process restarts**, i.e. a **permanent** SE
+key in the data-protection keychain, retrieved by a stable application tag. Whether ad-hoc
+`codesign -s -` still suffices for a *permanent* SE key, or whether a `keychain-access-groups`
+entitlement (and therefore an `.app` bundle + provisioning) is required, is **unmeasured**. It is
+the gating risk of this ticket and the subject of KC-2.2's first design checkpoint.
+
+### Design (grounded in the probe's API surface)
+
+```rust
+// apps/cli/src/persistence.rs — Apple-gated, additive. DeviceBoundSource stays for non-device
+// kinds and non-Apple targets until KC-2.3 / KC-2.4 land.
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+pub struct SecureEnclaveSource { se_key: security_framework::key::SecKey }
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+impl SecureEnclaveSource {
+    const KEY_TAG: &str = "com.lexenne.spa.device-se-key";   // application tag, stable across runs
+    const WRAPPED_FILE: &str = ".spa-se-wrapped-key";        // ECIES blob, safe in the clear
+    const ECIES: Algorithm = Algorithm::ECIESEncryptionCofactorX963SHA256AESGCM; // ADR pin
+
+    // Fetch the PERMANENT SE key by tag (ItemSearchOptions, class=key, load_refs). If absent:
+    // generate a permanent SE key (set_token(SecureEnclave) + a data-protection-keychain
+    // location + application_tag + access_control(1<<30)), mint a random 32-byte root_secret,
+    // ECIES-wrap it to the key's public half, write <base>/.spa-se-wrapped-key, zeroize secret.
+    pub fn load_or_create(base: &Path) -> Result<Self, PersistError> { /* … */ }
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+impl ShareSource for SecureEnclaveSource {
+    fn wrapping_secret(&self, kind: &ShareKind) -> Result<Secret, PersistError> {
+        let blob = fs::read(base.join(Self::WRAPPED_FILE))?;
+        let root = self.se_key.decrypt_data(Self::ECIES, &blob)?; // unwrap THROUGH the Enclave
+        let mut material = root;                                   // root_secret …
+        material.extend_from_slice(kind.domain_label().as_bytes()); // … || domain_label
+        Ok(Secret::new(material))                                  // identical shape to DeviceBoundSource
+    }
+}
+```
+
+`save_share` / `load_share` gain a tiny per-kind **source factory** (the "small source-selection
+wiring" of D0): `ShareKind::Device` on Apple → `SecureEnclaveSource`; everything else →
+`DeviceBoundSource` (interim). The CLI commands above the persistence layer do not change.
+
+### TDD plan (what is machine-verifiable vs hardware-manual)
+
+SE calls cannot run in CI (`cargo test` is unsigned, non-Apple runners have no Enclave). So:
+- **Machine-green everywhere:** `SecureEnclaveSource` is `#[cfg(target_os = …)]`-gated so
+  `cargo test --workspace` compiles and passes on non-Apple CI (PCC-3172 AC#3 stays green). A
+  software-only unit test still covers the kind→`domain_label` concatenation and the blob file
+  shape via the existing `DeviceBoundSource` path.
+- **Hardware-gated, `#[ignore]` by default:** an `se_roundtrip` test that creates the permanent
+  SE key, wraps/unwraps a secret, and asserts round-trip. Run manually on signed Apple-silicon
+  (`cargo test -- --ignored se_roundtrip`).
+- **Manual two-Mac (AC#4):** `onboard` on Mac A; copy the user dir's `.share` **and**
+  `.spa-se-wrapped-key` to Mac B; `recover`/`load_share` on Mac B must fail (B's keychain holds
+  no SE key under `KEY_TAG`).
+
+### Cargo wiring
+
+```toml
+[target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
+security-framework = "3"
+core-foundation = "0.10"
+```
+
+### Smoke + rollback
+
+- **Smoke:** `cargo build`; `codesign -s - target/debug/recovery`; `recovery onboard <user>`;
+  confirm `.spa-se-wrapped-key` materializes and `recovery sign` round-trips on one Mac.
+- **Rollback:** `SecureEnclaveSource` is additive behind `#[cfg]`; reverting the `save_share` /
+  `load_share` factory back to `DeviceBoundSource` restores Phase-1.5 behavior with no data
+  migration (the `.share` blobs are source-agnostic; only the wrapping secret's origin changes).
+
+### KC-2.2 design checkpoints (human approval)
+
+1. **Permanent-key entitlement measurement.** Before writing `SecureEnclaveSource`, confirm
+   whether a *permanent* SE key (data-protection keychain + application tag) can be created and
+   retrieved across processes under ad-hoc signing, or whether it needs a `keychain-access-groups`
+   entitlement + `.app`. If the latter, decide: ship an `.app` PoC harness, or record the
+   constraint and scope the PoC to a signed bundle.
+2. **Pre-submit.** Confirm `cargo test --workspace` is green on a non-Apple target (cfg-gating
+   holds) and that the off-device two-Mac result is recorded before close.
+
+---
+
 ## Consequences
 
 ### Positive
